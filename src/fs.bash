@@ -2,6 +2,8 @@
 #
 # Files/path functions used by ellipis.
 
+FS_LN_REL=${FS_LN_REL:-true}
+
 load msg
 load path
 
@@ -109,7 +111,11 @@ fs.link_rfile() {
     fs.backup "$dest"
 
     msg.print "linking $(path.relative_to_packages "$src") -> $(path.relative_to_home "$dest")"
-    ln -s "$src" "$dest"
+    if $FS_LN_REL > /dev/null; then
+      ln -rs "$src" "$dest"
+    else
+      ln -s "$src" "$dest"
+    fi
 }
 
 # symlink a single file into ELLIPSIS_HOME

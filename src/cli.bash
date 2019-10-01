@@ -60,7 +60,7 @@ cli.info() {
     msg.print "  User: $ELLIPSIS_USER"
     msg.print "  Init: $ELLIPSIS_INIT"
     msg.print "  Path: $ELLIPSIS_PATH"
-    msg.print "  Config: $ELLIPSIS_CCONFIG"
+    msg.print "  Config: $ELLIPSIS_CONFIG"
     msg.print "  Packages: $ELLIPSIS_PACKAGES"
 }
 

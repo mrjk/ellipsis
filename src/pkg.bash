@@ -27,7 +27,13 @@ pkg.path_from_name() {
 
 # Convert package path to name, stripping any leading dots.
 pkg.name_from_path() {
-    sed -e "s/^\.//" <<< "${1##*/}"
+    path=${1%/}
+    if [[ "$path" =~ $ELLIPSIS_PACKAGES ]]; then
+        echo "${path#$ELLIPSIS_PACKAGES}"
+    else
+        echo "$path"
+        #sed -e "s/^\.//" <<< "${path##*/}"
+    fi
 }
 
 # Pull name out as last path component of url

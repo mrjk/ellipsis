@@ -9,14 +9,15 @@ path.abs_path() {
 
 # Tries to determine if string is a path.
 path.is_path() {
-    case "$1" in
-        */*)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
+    [ -e "$1" ] && return 0 || return 1
+    #case "$1" in
+    #    */*)
+    #        return 0
+    #        ;;
+    #    *)
+    #        return 1
+    #        ;;
+    #esac
 }
 
 # return path to file relative to HOME (if possible)

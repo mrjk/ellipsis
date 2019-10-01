@@ -13,7 +13,9 @@ load msg
 # List all installed packages.
 ellipsis.list_packages() {
     if ! fs.folder_empty "$ELLIPSIS_PACKAGES"; then
-        echo "$ELLIPSIS_PACKAGES"/*
+        find "$ELLIPSIS_PACKAGES" -maxdepth 4 \
+          -name '.git' -or -name 'ellipsis.sh' |
+          sed -E "s#$ELLIPSIS_PACKAGES/?##;s#/(.git|ellipsis.sh).*##"
     fi
 }
 

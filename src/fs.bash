@@ -55,7 +55,8 @@ fs.list_broken_symlinks() {
 
 # List symlinks in a folder, defaulting to ELLIPSIS_HOME.
 fs.list_symlinks() {
-    find "${1:-$ELLIPSIS_HOME}" -maxdepth 1 -type l
+    # BUG: This depth variable should be manageable
+    find "${1:-$ELLIPSIS_HOME}" -maxdepth 3 -type l
 }
 
 fs.list_dirs() {

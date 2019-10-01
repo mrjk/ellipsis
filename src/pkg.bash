@@ -210,6 +210,9 @@ pkg.scan_nice_uri() {
         mode="link"
       elif [[ "$raw" =~ @ ]]; then
         mode="ssh"
+      else
+        mode="https"
+        raw="https://github.com/$raw"
       fi
     fi
 

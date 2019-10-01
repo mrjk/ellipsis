@@ -16,7 +16,7 @@ ellipsis.list_packages() {
         find "$ELLIPSIS_PACKAGES" -maxdepth 4 \
           -name '.git' -or -name 'ellipsis.sh' -or -type l |
           sed -E "s#$ELLIPSIS_PACKAGES/?##;s#/(.git|ellipsis.sh).*##" |
-          uniq
+          LANG=C sort | uniq
     fi
 }
 
@@ -51,7 +51,7 @@ ellipsis.install() {
     for package in "$@"; do
 
         # Fetch information from URI
-        pkg.scan_nice_uri "$package"
+        pkg.scan_nice_uri "$package" || return 1
 
         # Install depending the selected method
         if [ "$PKG_MODE" == "link" ]; then
@@ -305,8 +305,9 @@ ellipsis.edit() {
 ellipsis._list_symlink_mappings() {
     for file in $(fs.list_symlinks); do
         local link="$(readlink "$file")"
-        if [[ "$link" == $ELLIPSIS_PATH* ]]; then
-            msg.print "$(path.relative_to_packages "$link") -> $(path.relative_to_home "$file")"
+        local dest="$(path.abs_path $ELLIPSIS_HOME/$(readlink "$file"))"
+        if [[ "$dest" == $ELLIPSIS_PACKAGES* ]]; then
+            msg.print "$(path.relative_to_packages "$dest") -> $(path.relative_to_home "$file")"
         fi
     done
 }

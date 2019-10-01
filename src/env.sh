@@ -45,12 +45,17 @@ env_init_ellipsis() {
     export ELLIPSIS_INIT
     export ELLIPSIS_HOME
     export ELLIPSIS_PATH
+    export ELLIPSIS_BIN_SHIM
     export ELLIPSIS_USER
     export ELLIPSIS_PACKAGES
 
     # Mainly for other scripts, as Ellipsis will be called from the wrapper
     # function
-    env_append_path "$ELLIPSIS_BIN"
+    if [ "$ELLIPSIS_BIN" != "$ELLIPSIS_BIN_SHIM" ]; then
+        env_prepend_path "$ELLIPSIS_BIN_SHIM"
+    else
+        env_append_path "$ELLIPSIS_BIN"
+    fi
 }
 
 env_init_pkg() {

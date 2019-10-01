@@ -2,6 +2,11 @@
 
 ELLIPSIS_INIT=1
 
+# Load user configuration file
+if [ -f "$HOME/.config/ellipsis.sh" ]; then
+  . "$HOME/.config/ellipsis.sh"
+fi
+
 # Set path variables
 ELLIPSIS_PATH="${ELLIPSIS_PATH:-$HOME/.ellipsis}"
 ELLIPSIS_BIN="$ELLIPSIS_PATH/bin"

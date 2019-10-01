@@ -46,18 +46,27 @@ load os
 load msg
 load log
 
+# Load user configuration file
+ELLIPSIS_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/ellipsis.sh"
+ELLIPSIS_PATH="${FINAL_ELLIPSIS_PATH%/}"
+if [ -f "$ELLIPSIS_CONFIG" ]; then
+    . "$ELLIPSIS_CONFIG"
+fi
+
 # Set paths to final location
-ELLIPSIS_PATH="$FINAL_ELLIPSIS_PATH"
 ELLIPSIS_BIN="$ELLIPSIS_PATH/bin"
 ELLIPSIS_SRC="$ELLIPSIS_PATH/src"
 
-ELLIPSIS_PACKAGES="$ELLIPSIS_PATH/packages"
+# Editable vars
+ELLIPSIS_HOME="$HOME"
+ELLIPSIS_BIN_SHIM="${ELLIPSIS_BIN_SHIM:-$ELLIPSIS_BIN}"
+ELLIPSIS_PACKAGES="${ELLIPSIS_PACKAGES:-$ELLIPSIS_PATH/packages}"
 
 # Backup existing ~/.ellipsis if necessary
 fs.backup "$ELLIPSIS_PATH"
 
 # Move project into place
-if ! mv "$tmp_dir/ellipsis" "$ELLIPSIS_PATH"; then
+if ! ( mkdir -p "${ELLIPSIS_PATH%/*}" && mv "$tmp_dir/ellipsis" "$ELLIPSIS_PATH" ) ; then
     # Clean up
     rm -rf "$tmp_dir"
 
@@ -66,6 +75,25 @@ if ! mv "$tmp_dir/ellipsis" "$ELLIPSIS_PATH"; then
     msg.print 'Please check $ELLIPSIS_PATH and try again!'
     exit 1
 fi
+
+# Add ellipsis binary to PATH
+ELLIPSIS_BIN_SHIM="${ELLIPSIS_BIN_SHIM:-$ELLIPSIS_BIN}"
+if [ "$ELLIPSIS_BIN_SHIM" != "$ELLIPSIS_BIN" ]; then
+    mkdir -p "$ELLIPSIS_BIN_SHIM"
+    ln -s "$ELLIPSIS_BIN/ellipsis" "$ELLIPSIS_BIN_SHIM/ellipsis"
+fi
+
+# Create ellipsis configuration
+#fs.backup "$ELLIPSIS_CONFIG"
+mkdir -p "${ELLIPSIS_CONFIG%/*}" && cat << EOF >> "$ELLIPSIS_CONFIG"
+
+# Installaion of $(date):
+export ELLIPSIS_HOME=$ELLIPSIS_HOME
+export ELLIPSIS_BIN_SHIM=$ELLIPSIS_BIN_SHIM
+export ELLIPSIS_PACKAGES=$ELLIPSIS_PACKAGES
+export ELLIPSIS_PATH=$ELLIPSIS_PATH
+
+EOF
 
 # Clean up (only necessary on cygwin, really).
 rm -rf "$tmp_dir"
@@ -81,17 +109,19 @@ if [ "$PACKAGES" ]; then
     done
 fi
 
-msg.print '
+msg.print "
                                    ~ fin ~
    _    _    _
   /\_\ /\_\ /\_\
-  \/_/ \/_/ \/_/                         …because $HOME is where the <3 is!
+  \/_/ \/_/ \/_/                         …because \$HOME is where the <3 is!
 
-Be sure to add `export PATH=~/.ellipsis/bin:$PATH` to your bashrc or zshrc.
+Be sure to add '. \$HOME${ELLIPSIS_PATH##$HOME}/init.sh )\"' to your bashrc or zshrc. Also 
+a configuration file has been created in '\$HOME${ELLIPSIS_CONFIG##$HOME}'. You can also
+directly run ellipsis with this alias: 'alias ellipsis='\$HOME${ELLIPSIS_BIN_SHIM##$HOME}/ellipsis''
 
-Run `ellipsis install <package>` to install a new package.
-Run `ellipsis search <query>` to search for packages to install.
-Run `ellipsis help` for additional options.'
+Run 'ellipsis install <package>' to install a new package.
+Run 'ellipsis search <query>' to search for packages to install.
+Run 'ellipsis help' for additional options."
 
 if [ -z "$PACKAGES" ]; then
     msg.print ''

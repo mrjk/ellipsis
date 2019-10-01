@@ -14,8 +14,9 @@ load msg
 ellipsis.list_packages() {
     if ! fs.folder_empty "$ELLIPSIS_PACKAGES"; then
         find "$ELLIPSIS_PACKAGES" -maxdepth 4 \
-          -name '.git' -or -name 'ellipsis.sh' |
-          sed -E "s#$ELLIPSIS_PACKAGES/?##;s#/(.git|ellipsis.sh).*##"
+          -name '.git' -or -name 'ellipsis.sh' -or -type l |
+          sed -E "s#$ELLIPSIS_PACKAGES/?##;s#/(.git|ellipsis.sh).*##" |
+          uniq
     fi
 }
 
@@ -48,55 +49,20 @@ ellipsis.install() {
     fi
 
     for package in "$@"; do
-        # split branch from package name (if possible)
-        parts=($(pkg.split_name "$package"))
-        PKG_RAW="${parts[0]}"
-        PKG_BRANCH="${parts[1]}"
 
-        if [ -e "$PKG_RAW" ]; then
-            PKG_URL="$PKG_RAW"
-            PKG_NAME="$(pkg.name_from_url "$PKG_URL")"
+        # Fetch information from URI
+        pkg.scan_nice_uri "$package"
+
+        # Install depending the selected method
+        if [ "$PKG_MODE" == "link" ]; then
+          mkdir -p "${PKG_PATH%/*}"
+          ln -s "$PKG_URL" "$PKG_PATH"
         else
-            case "$PKG_RAW" in
-                ssh://git)
-                    # Set correct url by restoring first '@' coming from
-                    # 'ssh://git@...'
-                    PKG_URL="${parts[0]}@${parts[1]}"
-                    PKG_NAME="$(pkg.name_from_url "$PKG_URL")"
-                    # Set correct branch
-                    PKG_BRANCH="${parts[2]}"
-                ;;
-                # 'ssh:*' still included because user could be handled in
-                # ~/.ssh/config
-                http:*|https:*|git:*|ssh:*)
-                    PKG_URL="$PKG_RAW"
-                    PKG_NAME="$(pkg.name_from_url "$PKG_URL")"
-                ;;
-                */*)
-                    PKG_USER="$(pkg.user_from_shorthand "$PKG_RAW")"
-                    PKG_NAME="$(pkg.name_from_shorthand "$PKG_RAW")"
-                    PKG_URL="$ELLIPSIS_PROTO://github.com/$PKG_USER/${ELLIPSIS_PREFIX}$(pkg.name_stripped "$PKG_NAME")"
-                ;;
-                # Easy extension installation
-                ellipsis-*)
-                    PKG_NAME="$PKG_RAW"
-                    PKG_URL="$ELLIPSIS_PROTO://github.com/ellipsis/$PKG_NAME"
-                ;;
-                *)
-                    PKG_NAME="$PKG_RAW"
-                    PKG_URL="$ELLIPSIS_PROTO://github.com/$ELLIPSIS_USER/${ELLIPSIS_PREFIX}$(pkg.name_stripped "$PKG_NAME")"
-                ;;
-            esac
-        fi
-
-        # strip prefix from name as a convenience
-        PKG_NAME="$(pkg.name_stripped "$PKG_NAME")"
-        PKG_PATH="$(pkg.path_from_name "$PKG_NAME")"
-
-        if [ -z "$PKG_BRANCH" ]; then
-            git.clone "$PKG_URL" "$PKG_PATH"
-        else
-            git.clone "$PKG_URL" "$PKG_PATH" --branch "$PKG_BRANCH"
+          if [ -z "$PKG_BRANCH" ]; then
+              git.clone "$PKG_URL" "$PKG_PATH"
+          else
+              git.clone "$PKG_URL" "$PKG_PATH" --branch "$PKG_BRANCH"
+          fi
         fi
 
         pkg.env_up "$PKG_PATH"

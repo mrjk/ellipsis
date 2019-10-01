@@ -129,22 +129,36 @@ hooks.push() {
 
 # List repo status.
 hooks.installed() {
-    local sha1="$(git.sha1)"
-    local last_updated="$(git.last_updated)"
+    local col1=${1:-$PKG_NAME}
+    local col2=
+    local col3=
 
-    msg.print "\033[1m${1:-$PKG_NAME}\033[0m\t$sha1\t(updated $last_updated)"
+    if git.is_repo ; then
+        col2="$(git.sha1)"
+        col3="(updated $(git.last_updated))"
+    else
+        col2=" "
+        col3="(Not a git repo)"
+    fi
+
+    msg.print "\033[1m$col1\033[0m\t\t$col2\t\t$col3"
 }
 
 # Show git diffstat if repo has changed
 hooks.status() {
-    local ahead="$(git.ahead)"
+    if git.is_repo ; then
 
-    # Return unless there are changes or we are behind.
-    git.has_changes || git.has_untracked || [ "$ahead" ] || return
+      local ahead="$(git.ahead)"
 
-    local sha1="$(git.sha1)"
-    local last_updated="$(git.last_updated)"
+      # Return unless there are changes or we are behind.
+      git.has_changes || git.has_untracked || [ "$ahead" ] || return
 
-    msg.print "\033[1m${1:-$PKG_NAME}\033[0m $sha1 (updated $last_updated) $ahead"
-    git.status
+      local sha1="$(git.sha1)"
+      local last_updated="$(git.last_updated)"
+
+      msg.print "\033[1m${1:-$PKG_NAME}\033[0m $sha1 (updated $last_updated) $ahead"
+      git.status
+    else
+      msg.print "\033[1m${1:-$PKG_NAME}\033[0m (Not a git repo)"
+    fi
 }

@@ -36,6 +36,16 @@ pkg.name_from_path() {
     fi
 }
 
+# Convert package path to name for links
+pkg.name_from_link() {
+    path=${1%/}
+    if [[ "$path" =~ $ELLIPSIS_PACKAGES ]]; then
+        echo "${path#$ELLIPSIS_PACKAGES}"
+    else
+        sed -e "s/^\.//" <<< "${path##*/}"
+    fi
+}
+
 # Pull name out as last path component of url
 pkg.name_from_url() {
     rev <<< "$1" | cut -d '/' -f 1 | rev
@@ -154,3 +164,156 @@ pkg._unset_hooks() {
         unset -f pkg.$hook
     done
 }
+
+# Scan a package URI and determine installation informations
+pkg.scan_nice_uri() {
+
+    local input=$1
+
+    local raw=${input%/}
+    local mode='auto'
+    local remote_user=''
+    local remote_pass=''
+    local url=''
+    local port=''
+    local name=''
+    local path=''
+    local ref=''
+
+    # Extract reference
+    ref=$( sed -E 's/.*#([0-9a-zA-Z_-][0-9a-zA-Z_-]*)/\1/' <<< "$raw" )
+    if [[ "$ref" == "$raw" ]]; then
+      ref=''
+    else
+      raw=${raw%#$ref}
+    fi
+
+    # Detect installation handler
+    case $raw in
+      ssh://*)
+        mode='ssh'
+        ;;
+      http://*)
+        mode='http'
+        ;;
+      https://*)
+        mode='https'
+        ;;
+      link://*)
+        mode='link'
+        ;;
+    esac
+
+    # Autodetect installation method
+    if [ "$mode" == "auto" ]; then
+      if [ -d "$raw" ]; then
+        mode="link"
+      elif [[ "$raw" =~ @ ]]; then
+        mode="ssh"
+      fi
+    fi
+
+    # Fails if no valid method found
+    if [ "$mode" == "auto" ]; then
+      log.fail "Unknown method installation for $input"
+      return 1
+    fi
+
+    # Strip uri handler prefix if present
+    raw=${raw#$mode://}
+
+    # Extract other parts of the url
+    if [ "$mode" != "link" ]; then
+
+      # Extract remote_creds
+      local remote_creds=$( sed -E 's/^([^@]*)@.*/\1/' <<< "$raw" )
+      if [[ "$remote_creds" == "$raw" ]]; then
+        remote_creds=''
+      else
+        # If there is any passord with it ?
+        if [[ "$remote_creds" =~ : ]]; then
+          remote_user=${remote_creds%%:*}
+          remote_pass=${remote_creds#*:}
+        else
+          remote_user=${remote_creds}
+          remote_pass=''
+        fi
+        raw=${raw#$remote_creds@}
+      fi
+
+      # Extract domain
+      domain=$( sed 's/[:/].*//' <<< "$raw" )
+      raw=${raw#$domain}
+
+      # Extract port
+      if [[ "$raw" =~ :[0-9][0-9]* ]]; then
+        port=$( sed -E 's/:([0-9][0-9]*).*/\1/' <<< "$raw" )
+        raw=${raw#:$port}
+      fi
+
+      # Extract path and name
+      name="$( tr '[:/]' ' ' <<< "$raw" | xargs | tr ' ' / )"
+      path="$(pkg.path_from_name "$name")"
+
+      # Rebuild full url and destination path
+      case $mode in
+        ssh) url="${remote_user:+$remote_user${remote_pass:+:$remote_pass}@}$domain:${port:+$port/}$name" ;;
+        http*) url="$mode://${remote_user:+$remote_user${remote_pass:+:$remote_pass}@}$domain${port:+:$port}/$name" ;;
+      esac
+
+    else
+      url=$raw
+      name=$(pkg.name_from_link $raw )
+      path="$(pkg.path_from_name "dev/$name")"
+    fi
+
+    # Define exported variables
+    PKG_MODE=$mode
+    PKG_URL=$url
+    PKG_NAME=$name
+    PKG_PATH=$path
+
+    PKG_USER=$remote_user
+    PKG_PASS=$remote_pass
+
+    PKG_DOMAIN=$domain
+    PKG_PORT=$port
+    PKG_BRANCH=$ref
+
+    #return 
+
+    # Debug output
+    cat <<EOF #>/dev/null
+DEBUG:
+    INPUT: $input
+    PKG_MODE=$mode
+    PKG_URL=$url
+    PKG_NAME=$name
+    PKG_CREDS=$remote_user${remote_pass:+ (pass: $remote_pass)}
+
+    PKG_PATH=$path
+    PKG_DOMAIN=$domain
+    PKG_PORT=$port
+    PKG_BRANCH=$ref
+EOF
+
+}
+
+# TESTS
+#  
+#  # Anonymous clone
+#  https://github.com/zeekay/dot-vim
+#  https://github.com/zeekay/dot-vim.git
+#  https://framagit.org/mrjk-basher/home-lang
+#  https://framagit.org/mrjk-basher/home-lang.git
+#  https://framagit.org:4443/mrjk-basher/home-lang.git
+#  https://user:password@framagit.org:4443/mrjk-basher/home-lang.git
+#  
+#  # Authentified tests
+#  git@github.com:zeekay/dot-vim.git
+#  git@framagit.org:mrjk-basher/home-lang.git
+#  git@framagit.org:/mrjk-basher/home-lang.git
+#  git@framagit.org:2222/mrjk-basher/home-lang.git
+#  toto@framagit.org:2222/mrjk-basher/home-lang.git
+#  
+

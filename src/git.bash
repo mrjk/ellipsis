@@ -120,3 +120,12 @@ git.needs_update() {
     fi
     return 0
 }
+
+# Check if there is any git repo
+git.is_repo() {
+  if [ -d .git ]; then
+    return 0
+  else
+    git rev-parse --git-dir > /dev/null 2>&1 && return 0 || return 1
+  fi;
+}
